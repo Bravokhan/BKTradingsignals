@@ -4,4 +4,4 @@ pandas_ta
 pytz
 streamlit-autorefresh
 setuptools
-numpy
+numpy==1.24.4
