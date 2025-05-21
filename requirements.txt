@@ -4,3 +4,4 @@ pandas_ta
 pytz
 streamlit-autorefresh
 setuptools
+numpy
