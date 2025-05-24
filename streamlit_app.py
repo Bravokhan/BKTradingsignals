@@ -1,9 +1,11 @@
 import streamlit as st
+st.set_page_config(page_title="PX Signal Bot", layout="wide")
+
 import yfinance as yf
+import pandas as pd
 import pandas_ta as ta
-from datetime import datetime
-import pytz
 from streamlit_autorefresh import st_autorefresh
+
 
 # Auto-refresh every 60 seconds
 st_autorefresh(interval=60 * 1000, key="refresh")
