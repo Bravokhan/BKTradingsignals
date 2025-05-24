@@ -10,7 +10,6 @@ from streamlit_autorefresh import st_autorefresh
 # Auto-refresh every 60 seconds
 st_autorefresh(interval=60 * 1000, key="refresh")
 
-st.set_page_config(page_title="PX Signal Bot", layout="wide")
 st.markdown("""<h1 style='text-align: center; color: #00ffcc;'>📈 PX Signal Bot - Live Trading Signals</h1>""", unsafe_allow_html=True)
 
 # Display local time (UTC+5)
