@@ -1,48 +1,63 @@
 import streamlit as st
-import yfinance as yf
-import pandas_ta as ta
+import requests
+import pandas as pd
 from datetime import datetime, timedelta
 import pytz
 
-# Set Streamlit page config
-st.set_page_config(page_title="PX Signal Bot", layout="wide")
+st.set_page_config(page_title="📈 Forex Signal Bot", layout="wide")
 
-# App Header
-st.markdown("<h1 style='text-align: center; color: #00ffcc;'>📈 PX Signal Bot - 1M Prediction</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <h1 style='text-align: center; color: #00ffcc;'>📈 Forex Signal Bot - 1M Direction</h1>
+""", unsafe_allow_html=True)
 
-# Timezone
-local_tz = pytz.timezone("Asia/Karachi")
+# Define timezone
+local_tz = pytz.timezone('Asia/Karachi')
 
-# Input for pair (e.g., BTC-USD)
-symbol = st.selectbox("Select Pair:", ["BTC-USD", "ETH-USD", "BNB-USD", "SOL-USD", "ADA-USD", "XRP-USD"])
+# Select forex pair
+selected_pair = st.selectbox("Select Forex Pair:", [
+    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF"
+])
 
-# Button to trigger prediction
-if st.button("🔎 Predict Next 1M Candle Direction"):
+if st.button("Get 1M Candle Direction"):
     try:
-        # Get today's start time in UTC
-        now = datetime.now(local_tz)
-        today_start = datetime(now.year, now.month, now.day, tzinfo=local_tz).astimezone(pytz.utc)
-        
-        # Fetch 1m historical data
-        data = yf.download(symbol, interval="1m", start=today_start, progress=False)
+        # Define TradingView symbol format
+        symbol_map = {
+            "EURUSD": "FX:EURUSD",
+            "GBPUSD": "FX:GBPUSD",
+            "USDJPY": "FX:USDJPY",
+            "AUDUSD": "FX:AUDUSD",
+            "USDCHF": "FX:USDCHF"
+        }
 
-        if data.empty or len(data) < 5:
-            st.warning("⚠️ No data available for this pair.")
+        symbol = symbol_map[selected_pair]
+
+        # TradingView API-like structure using a public source (simulated)
+        url = f"https://api.binance.com/api/v3/klines?symbol={selected_pair.replace('/', '')}T&interval=1m&limit=20"
+        response = requests.get(url)
+
+        if response.status_code != 200:
+            st.error("❌ Failed to fetch data from Binance API.")
         else:
-            # Simple Strategy: Compare last two closes
-            last = data["Close"].iloc[-1]
-            prev = data["Close"].iloc[-2]
+            data = response.json()
+            df = pd.DataFrame(data, columns=[
+                'time', 'open', 'high', 'low', 'close', 'volume',
+                'close_time', 'quote_asset_volume', 'number_of_trades',
+                'taker_buy_base', 'taker_buy_quote', 'ignore'
+            ])
+            df['close'] = pd.to_numeric(df['close'])
+            df['open'] = pd.to_numeric(df['open'])
+            df['time'] = pd.to_datetime(df['time'], unit='ms')
 
-            if last > prev:
-                st.success("📈 Predicted Direction: UP")
-            elif last < prev:
-                st.error("📉 Predicted Direction: DOWN")
+            last_candle = df.iloc[-1]
+            close = last_candle['close']
+            open_price = last_candle['open']
+
+            if close > open_price:
+                st.success(f"📈 Next 1M Candle Direction for {selected_pair}: UP")
+            elif close < open_price:
+                st.error(f"📉 Next 1M Candle Direction for {selected_pair}: DOWN")
             else:
-                st.info("➡️ Predicted Direction: FLAT (No change)")
-
-            # Optional: Display last 5 candles
-            st.subheader("📊 Last 5 Candles")
-            st.dataframe(data.tail())
+                st.info(f"➖ Next 1M Candle Direction for {selected_pair}: NEUTRAL")
 
     except Exception as e:
-        st.error(f"❌ Error fetching data: {e}")
+        st.error(f"❌ Error fetching data: {str(e)}")
