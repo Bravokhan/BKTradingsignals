@@ -1,63 +1,67 @@
 import streamlit as st
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
 import pytz
+from datetime import datetime
 
+# --- Setup ---
 st.set_page_config(page_title="📈 Forex Signal Bot", layout="wide")
+st.title("📈 Forex Signal Bot - 1M Direction")
 
-st.markdown("""
-    <h1 style='text-align: center; color: #00ffcc;'>📈 Forex Signal Bot - 1M Direction</h1>
-""", unsafe_allow_html=True)
-
-# Define timezone
+# API Configuration (Get your free API key from https://twelvedata.com/)
+API_KEY = "YOUR_API_KEY"  # Replace with your actual API key
+SYMBOLS = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CHF"]
 local_tz = pytz.timezone('Asia/Karachi')
 
-# Select forex pair
-selected_pair = st.selectbox("Select Forex Pair:", [
-    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCHF"
-])
+# --- Function to Get Forex Data ---
+def get_forex_data(symbol):
+    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1min&outputsize=2&apikey={API_KEY}"
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if 'values' in data:
+                df = pd.DataFrame(data['values'])
+                df['datetime'] = pd.to_datetime(df['datetime'])
+                df['close'] = pd.to_numeric(df['close'])
+                df['open'] = pd.to_numeric(df['open'])
+                return df.iloc[-1]  # Return latest candle
+        st.error(f"⚠️ No data received for {symbol}")
+    except Exception as e:
+        st.error(f"❌ API Error: {str(e)}")
+    return None
+
+# --- Main App ---
+selected_pair = st.selectbox("Select Forex Pair:", SYMBOLS)
 
 if st.button("Get 1M Candle Direction"):
-    try:
-        # Define TradingView symbol format
-        symbol_map = {
-            "EURUSD": "FX:EURUSD",
-            "GBPUSD": "FX:GBPUSD",
-            "USDJPY": "FX:USDJPY",
-            "AUDUSD": "FX:AUDUSD",
-            "USDCHF": "FX:USDCHF"
-        }
-
-        symbol = symbol_map[selected_pair]
-
-        # TradingView API-like structure using a public source (simulated)
-        url = f"https://api.binance.com/api/v3/klines?symbol={selected_pair.replace('/', '')}T&interval=1m&limit=20"
-        response = requests.get(url)
-
-        if response.status_code != 200:
-            st.error("❌ Failed to fetch data from Binance API.")
-        else:
-            data = response.json()
-            df = pd.DataFrame(data, columns=[
-                'time', 'open', 'high', 'low', 'close', 'volume',
-                'close_time', 'quote_asset_volume', 'number_of_trades',
-                'taker_buy_base', 'taker_buy_quote', 'ignore'
-            ])
-            df['close'] = pd.to_numeric(df['close'])
-            df['open'] = pd.to_numeric(df['open'])
-            df['time'] = pd.to_datetime(df['time'], unit='ms')
-
-            last_candle = df.iloc[-1]
-            close = last_candle['close']
-            open_price = last_candle['open']
-
-            if close > open_price:
-                st.success(f"📈 Next 1M Candle Direction for {selected_pair}: UP")
-            elif close < open_price:
-                st.error(f"📉 Next 1M Candle Direction for {selected_pair}: DOWN")
+    with st.spinner("Fetching data..."):
+        latest_candle = get_forex_data(selected_pair)
+        
+        if latest_candle is not None:
+            # Display candle info
+            st.markdown(f"### {selected_pair} - Last Candle (1M)")
+            col1, col2 = st.columns(2)
+            col1.metric("Open", f"{latest_candle['open']:.5f}")
+            col2.metric("Close", f"{latest_candle['close']:.5f}")
+            
+            # Generate signal
+            if latest_candle['close'] > latest_candle['open']:
+                st.success("📈 Direction: UP (Green Candle)")
+            elif latest_candle['close'] < latest_candle['open']:
+                st.error("📉 Direction: DOWN (Red Candle)")
             else:
-                st.info(f"➖ Next 1M Candle Direction for {selected_pair}: NEUTRAL")
+                st.info("➖ Direction: NEUTRAL (Doji)")
+            
+            # Show timestamp
+            local_time = latest_candle['datetime'].astimezone(local_tz)
+            st.caption(f"Last update: {local_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    except Exception as e:
-        st.error(f"❌ Error fetching data: {str(e)}")
+# --- How to Get API Key ---
+st.markdown("---")
+st.markdown("""
+**How to get your API key:**
+1. Sign up at [Twelve Data](https://twelvedata.com/)
+2. Get your free API key from the dashboard
+3. Replace `YOUR_API_KEY` in the code
+""")
