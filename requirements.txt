@@ -1,4 +1,4 @@
 streamlit
-tvdatafeed
+yfinance
 pandas
 numpy
