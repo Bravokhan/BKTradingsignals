@@ -1,11 +1,10 @@
 import streamlit as st
 import yfinance as yf
-from datetime import datetime, timedelta
 
-# Title
-st.title("📈 Forex 1-Min Candle Direction Predictor")
+st.set_page_config(page_title="1M Forex Signal", page_icon="📈")
+st.title("📊 Forex 1-Min Candle Direction Predictor")
 
-# Supported pairs (Yahoo tickers for forex)
+# Forex Pairs from Yahoo Finance
 pairs = {
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
@@ -19,20 +18,29 @@ pairs = {
 # Dropdown
 selected_pair = st.selectbox("Select Forex Pair", list(pairs.keys()))
 
-if st.button("📊 Predict Next 1-Min Candle"):
-    try:
-        # Fetch last 2 minutes of 1min data
-        ticker = yf.Ticker(pairs[selected_pair])
-        df = ticker.history(interval="1m", period="2m")
+# Button to run prediction
+if st.button("Predict Next 1-Min Candle"):
+    with st.spinner("Fetching live data..."):
+        try:
+            ticker = yf.Ticker(pairs[selected_pair])
+            df = ticker.history(period="2m", interval="1m")
 
-        if len(df) >= 2:
-            last_candle = df.iloc[-2]
-            next_candle = df.iloc[-1]
+            if df is None or df.empty or len(df) < 2:
+                st.warning("⚠️ Not enough data to determine direction.")
+            else:
+                last = df.iloc[-2]
+                current = df.iloc[-1]
 
-            direction = "📈 UP" if next_candle["Close"] > last_candle["Close"] else "📉 DOWN"
-            st.success(f"Next 1-min candle direction for {selected_pair}: **{direction}**")
-        else:
-            st.warning("⚠️ Not enough data to determine direction.")
+                if current["Close"] > last["Close"]:
+                    st.success(f"✅ Prediction: UP 📈")
+                elif current["Close"] < last["Close"]:
+                    st.success(f"✅ Prediction: DOWN 📉")
+                else:
+                    st.info("⚠️ No Movement: Same Close Price.")
 
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
+                # Optional: Show raw data
+                with st.expander("Show Raw Candle Data"):
+                    st.dataframe(df)
+
+        except Exception as e:
+            st.error(f"❌ Error fetching data: {e}")
