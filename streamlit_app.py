@@ -1,8 +1,8 @@
 import streamlit as st
 import yfinance as yf
 
-st.set_page_config(page_title="1M Forex Signal", page_icon="📈")
-st.title("📊 Forex 1-Min Candle Direction Predictor")
+st.set_page_config(page_title="15M Forex Signal", page_icon="📈")
+st.title("📊 Forex 15-Min Candle Direction Predictor")
 
 # Forex Pairs from Yahoo Finance
 pairs = {
@@ -19,11 +19,11 @@ pairs = {
 selected_pair = st.selectbox("Select Forex Pair", list(pairs.keys()))
 
 # Button to run prediction
-if st.button("Predict Next 1-Min Candle"):
-    with st.spinner("Fetching live data..."):
+if st.button("Predict Candle Direction"):
+    with st.spinner("Fetching data..."):
         try:
             ticker = yf.Ticker(pairs[selected_pair])
-            df = ticker.history(period="2m", interval="1m")
+            df = ticker.history(period="1d", interval="15m")  # <- changed interval
 
             if df is None or df.empty or len(df) < 2:
                 st.warning("⚠️ Not enough data to determine direction.")
@@ -38,8 +38,7 @@ if st.button("Predict Next 1-Min Candle"):
                 else:
                     st.info("⚠️ No Movement: Same Close Price.")
 
-                # Optional: Show raw data
-                with st.expander("Show Raw Candle Data"):
+                with st.expander("Show Candle Data"):
                     st.dataframe(df)
 
         except Exception as e:
